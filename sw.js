@@ -5,7 +5,7 @@
    to the network normally.
    ============================================================================ */
 
-const CACHE_NAME = "rama-console-v2";
+const CACHE_NAME = "rama-console-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
