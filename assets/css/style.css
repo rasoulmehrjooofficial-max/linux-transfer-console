@@ -90,21 +90,13 @@ input, select, textarea { font-family: inherit; }
 /* ---------------------------------------------------------------------- */
 .app { display: flex; flex-direction: column; height: 100vh; }
 
-/* Installed-app (standalone) safe-area handling — iPhone home indicator.
-   The top notch/Dynamic Island is handled natively by iOS (see the opaque
-   "black" apple-mobile-web-app-status-bar-style in index.html — that makes
-   iOS reserve the status-bar strip itself, so our content simply starts
-   below it, no CSS needed there). Only the bottom home-indicator area is a
-   translucent overlay with no non-translucent equivalent, so that's the one
-   inset this app still has to account for itself. Redefining --statusbar-h
-   (rather than patching each element) keeps everything anchored to it —
-   .terminal-panel's bottom offset, .drawer's bottom — consistent. */
-@media (display-mode: standalone) {
-  :root {
-    --statusbar-h: calc(28px + env(safe-area-inset-bottom));
-  }
-  .statusbar { padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
-}
+/* Note: no safe-area/env() handling needed here. The viewport meta tag
+   intentionally omits viewport-fit=cover, so iOS never extends this app's
+   content edge-to-edge under the notch/Dynamic Island or home indicator —
+   it reserves that space natively, the same way a normal Safari tab does.
+   That was the actual fix for content rendering under the notch when
+   installed; env(safe-area-inset-*) approaches (tried first) didn't
+   resolve reliably in standalone mode on-device. */
 
 .topbar {
   height: var(--topbar-h);
