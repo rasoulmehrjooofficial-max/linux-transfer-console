@@ -90,13 +90,20 @@ input, select, textarea { font-family: inherit; }
 /* ---------------------------------------------------------------------- */
 .app { display: flex; flex-direction: column; height: 100vh; }
 
-/* Installed-app (standalone) safe-area handling — iPhone notch / home indicator */
+/* Installed-app (standalone) safe-area handling — iPhone notch / home indicator.
+   Redefining the two layout custom properties (rather than patching each
+   element's own height) means every rule anchored to them — .sidebar's top,
+   .drawer's top/bottom, .terminal-panel's bottom — stays consistent
+   automatically instead of drifting out of sync with the topbar/statusbar's
+   real on-screen height. */
 @media (display-mode: standalone) {
-  .topbar { padding-top: calc(env(safe-area-inset-top) + 0px); height: calc(var(--topbar-h) + env(safe-area-inset-top)); }
-  .statusbar { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--statusbar-h) + env(safe-area-inset-bottom)); }
-  .sidebar { padding-top: calc(10px + env(safe-area-inset-top)); }
-  .connect-topbar { padding-top: env(safe-area-inset-top); height: calc(var(--topbar-h) + env(safe-area-inset-top)); }
-  .terminal-panel { padding-bottom: env(safe-area-inset-bottom); }
+  :root {
+    --topbar-h: calc(44px + env(safe-area-inset-top));
+    --statusbar-h: calc(28px + env(safe-area-inset-bottom));
+  }
+  .topbar, .connect-topbar { padding-top: env(safe-area-inset-top); box-sizing: border-box; }
+  .statusbar { padding-bottom: env(safe-area-inset-bottom); box-sizing: border-box; }
+  .sidebar { padding-top: 10px; }
 }
 
 .topbar {
