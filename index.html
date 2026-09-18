@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>rama</title>
+
+<!-- PWA: installable on iOS via Safari "Add to Home Screen" -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="rama" />
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="assets/img/apple-touch-icon-152.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="assets/img/apple-touch-icon-167.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="assets/img/icon-512.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<div id="boot-screen" class="boot-screen">
+  <pre class="boot-log" id="boot-log"></pre>
+</div>
+
+<!-- HOST CONNECTION SCREEN (Termius-style entry point) -->
+<div id="connect-screen" class="connect-screen hidden">
+  <div class="connect-topbar">
+    <span class="brand">TRANSFER<span class="brand-accent">://</span>CONSOLE</span>
+    <div class="connect-search-wrap">
+      <span class="mono">⌕</span>
+      <input type="text" id="connect-search" placeholder="Find a host or ssh user@hostname..." autocomplete="off" spellcheck="false" />
+    </div>
+    <button class="btn btn-primary btn-xs" id="connect-new-host">+ <span class="lbl">NEW HOST</span></button>
+  </div>
+  <div class="connect-body">
+    <div class="connect-section-label">HOSTS</div>
+    <div class="host-grid" id="host-grid"></div>
+  </div>
+  <div class="connect-transition hidden" id="connect-transition">
+    <pre class="boot-log" id="connect-log"></pre>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+
+  <!-- TOP SYSTEM BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="btn-toggle-sidebar" class="icon-btn" title="TOGGLE NAV" aria-label="Toggle navigation">☰</button>
+      <span class="brand">TRANSFER<span class="brand-accent">://</span>CONSOLE</span>
+    </div>
+    <div class="topbar-right">
+      <span class="status-chip" id="chip-system-status" title="System status">
+        <span class="dot dot-ok"></span> SYSTEM: NOMINAL
+      </span>
+      <span class="status-chip" id="chip-server">SERVER: <b id="chip-server-name">SRV-CORE-01</b></span>
+      <span class="status-chip" id="chip-connection">
+        <span class="dot dot-ok"></span> CONNECTED
+      </span>
+      <button class="icon-btn" id="btn-search" title="Global search (Ctrl+K)">⌕ <span class="lbl">SEARCH</span> <kbd>⌘K</kbd></button>
+      <button class="icon-btn" id="btn-terminal" title="Toggle terminal">&gt;_ <span class="lbl">TERM</span></button>
+      <button class="icon-btn" id="btn-notifications" title="Notifications">
+        ⚑ <span id="notif-count" class="badge-count hidden">0</span>
+      </button>
+      <span class="status-chip" id="chip-user">USER: <b id="chip-username">admin</b></span>
+      <span class="status-chip mono" id="chip-time">--:--:--</span>
+      <button class="icon-btn" id="btn-disconnect" title="Disconnect and return to host list">⏻ <span class="lbl">DISCONNECT</span></button>
+    </div>
+  </header>
+
+  <div class="body-shell">
+
+    <!-- LEFT NAVIGATION -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-section-label">MAIN</div>
+      <a href="#/dashboard" class="nav-item" data-route="dashboard"><span class="nav-ico">■</span> /dashboard</a>
+      <a href="#/transfers" class="nav-item" data-route="transfers"><span class="nav-ico">⇄</span> /transfers</a>
+      <a href="#/files" class="nav-item" data-route="files"><span class="nav-ico">▤</span> /files</a>
+      <a href="#/documents" class="nav-item" data-route="documents"><span class="nav-ico">▥</span> /documents</a>
+      <div class="sidebar-section-label">MANAGEMENT</div>
+      <a href="#/accounts" class="nav-item" data-route="accounts"><span class="nav-ico">☺</span> /accounts</a>
+      <a href="#/servers" class="nav-item" data-route="servers"><span class="nav-ico">▦</span> /servers</a>
+      <div class="sidebar-section-label">RECORDS</div>
+      <a href="#/logs" class="nav-item" data-route="logs"><span class="nav-ico">≡</span> /logs</a>
+      <a href="#/history" class="nav-item" data-route="history"><span class="nav-ico">↺</span> /history</a>
+      <div class="sidebar-section-label">SYSTEM</div>
+      <a href="#/settings" class="nav-item" data-route="settings"><span class="nav-ico">⚙</span> /settings</a>
+
+      <div class="sidebar-footer">
+        <div class="mini-stat"><span>CPU</span><div class="mini-bar"><i id="mini-cpu" style="width:0%"></i></div></div>
+        <div class="mini-stat"><span>MEM</span><div class="mini-bar"><i id="mini-mem" style="width:0%"></i></div></div>
+        <div class="mini-stat"><span>DISK</span><div class="mini-bar"><i id="mini-disk" style="width:0%"></i></div></div>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="content" id="content">
+      <!-- injected by router -->
+    </main>
+
+    <!-- notifications drawer -->
+    <aside class="drawer" id="notif-drawer">
+      <div class="drawer-head">
+        <span>NOTIFICATIONS</span>
+        <div>
+          <button class="btn btn-ghost btn-xs" id="btn-mark-all-read">MARK ALL READ</button>
+          <button class="icon-btn" id="btn-close-notif">✕</button>
+        </div>
+      </div>
+      <div class="drawer-body" id="notif-list"></div>
+    </aside>
+
+  </div>
+
+  <!-- BOTTOM SYSTEM STATUS -->
+  <footer class="statusbar">
+    <span>CPU <b id="sb-cpu">0%</b></span>
+    <span class="sep">|</span>
+    <span>MEMORY <b id="sb-mem">0%</b></span>
+    <span class="sep">|</span>
+    <span>STORAGE <b id="sb-disk">0%</b></span>
+    <span class="sep">|</span>
+    <span>NETWORK <b id="sb-net" class="ok">ONLINE</b></span>
+    <span class="sep">|</span>
+    <span>ACTIVE TRANSFERS <b id="sb-active">0</b></span>
+    <span class="sep">|</span>
+    <span>QUEUE <b id="sb-queued">0</b></span>
+    <span class="grow"></span>
+    <span id="sb-clock" class="mono">2026-09-18 00:00:00</span>
+  </footer>
+
+  <!-- TERMINAL PANEL -->
+  <section class="terminal-panel hidden" id="terminal-panel">
+    <div class="terminal-head">
+      <span id="terminal-head-label">root@transfer-node:~# <span class="blink">_</span> LIVE CONSOLE</span>
+      <div>
+        <button class="btn btn-ghost btn-xs" id="btn-clear-terminal">CLEAR</button>
+        <button class="icon-btn" id="btn-close-terminal">✕</button>
+      </div>
+    </div>
+    <div class="terminal-body" id="terminal-body"></div>
+    <div class="terminal-input-row">
+      <span class="mono" id="terminal-prompt">root@transfer-node:~$</span>
+      <input type="text" id="terminal-input" class="mono" autocomplete="off" spellcheck="false" placeholder="type a command — try 'help'" />
+    </div>
+  </section>
+
+</div>
+
+<!-- These live outside #app so they still work while the connect screen
+     (also outside #app) is showing — #app itself is display:none until a
+     host is picked, which would otherwise collapse any fixed-position
+     child to 0x0. -->
+
+<!-- GLOBAL SEARCH / COMMAND PALETTE -->
+<div class="modal-overlay hidden" id="search-overlay">
+  <div class="palette">
+    <div class="palette-input-row">
+      <span class="mono">/&gt;</span>
+      <input type="text" id="palette-input" placeholder="SEARCH TRANSFERS, FILES, DOCUMENTS, ACCOUNTS, SERVERS, LOGS... " autocomplete="off" />
+      <kbd>ESC</kbd>
+    </div>
+    <div class="palette-results" id="palette-results"></div>
+  </div>
+</div>
+
+<!-- GENERIC MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-stack" id="toast-stack"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/components.js"></script>
+<script src="assets/js/export.js"></script>
+<script src="assets/js/pages/dashboard.js"></script>
+<script src="assets/js/pages/transfers.js"></script>
+<script src="assets/js/pages/files.js"></script>
+<script src="assets/js/pages/documents.js"></script>
+<script src="assets/js/pages/accounts.js"></script>
+<script src="assets/js/pages/servers.js"></script>
+<script src="assets/js/pages/logs.js"></script>
+<script src="assets/js/pages/history.js"></script>
+<script src="assets/js/pages/settings.js"></script>
+<script src="assets/js/router.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
