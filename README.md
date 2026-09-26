@@ -103,7 +103,23 @@ assets/js/export.js          PDF/TXT export
 assets/js/router.js          hash router
 assets/js/main.js            boot sequence, topbar/sidebar/terminal/search wiring
 assets/js/pages/*.js         one file per route (/dashboard, /transfers, ...)
+assets/js/bulletin-data.js    content for /bulletin — edit this file directly, see below
 ```
+
+## Updating the /bulletin board
+
+`/bulletin` is a read-only info board — there is no create/edit/delete button
+anywhere in the UI for it, on purpose. To publish or change something there,
+edit `assets/js/bulletin-data.js` directly (it has field-by-field instructions
+at the top of the file), then commit and push:
+
+```bash
+git add assets/js/bulletin-data.js
+git commit -m "Bulletin: <what changed>"
+git push
+```
+
+GitHub Pages redeploys automatically in under a minute.
 
 ## Palette
 

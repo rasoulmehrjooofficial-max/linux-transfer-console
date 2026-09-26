@@ -12,6 +12,8 @@
     { pattern: /^files(?:\/(.*))?$/, page: "files" },
     { pattern: /^documents$/, page: "documents" },
     { pattern: /^documents\/([^/]+)$/, page: "documents", detail: true },
+    { pattern: /^bulletin$/, page: "bulletin" },
+    { pattern: /^bulletin\/([^/]+)$/, page: "bulletin", detail: true },
     { pattern: /^accounts$/, page: "accounts" },
     { pattern: /^servers$/, page: "servers" },
     { pattern: /^logs$/, page: "logs" },
