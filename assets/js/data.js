@@ -86,9 +86,7 @@
     ];
 
     const servers = [
-      { id: uid("srv"), name: "SRV-CORE-01", host: "10.20.0.11", port: 22, protocol: "SSH", username: "svc-transfer", status: "ONLINE", lastConnection: daysAgoIso(0, 8), createdAt: daysAgoIso(140), os: "Ubuntu 22.04 LTS", kernel: "5.15.0-119-generic", uptimeSeconds: 5433120, cpuPercent: 24, ramPercent: 41, diskPercent: 68, networkStatus: "ONLINE" },
-      { id: uid("srv"), name: "SRV-BACKUP-02", host: "10.20.0.24", port: 22, protocol: "SFTP", username: "svc-backup", status: "ONLINE", lastConnection: daysAgoIso(0, 6), createdAt: daysAgoIso(133), os: "Debian 12", kernel: "6.1.0-13-amd64", uptimeSeconds: 2211870, cpuPercent: 11, ramPercent: 33, diskPercent: 82, networkStatus: "ONLINE" },
-      { id: uid("srv"), name: "SRV-EDGE-03", host: "10.20.1.5", port: 21, protocol: "FTP", username: "ftp-edge", status: "ERROR", lastConnection: daysAgoIso(2, 22), createdAt: daysAgoIso(90), os: "CentOS 7", kernel: "3.10.0-1160", uptimeSeconds: 118320, cpuPercent: 4, ramPercent: 18, diskPercent: 47, networkStatus: "OFFLINE" },
+      { id: uid("srv"), name: "QYREVA-VPS", host: "217.60.192.204", port: 22, protocol: "SSH", username: "ubuntu", status: "ONLINE", lastConnection: daysAgoIso(0, 8), createdAt: daysAgoIso(60), os: "Ubuntu 22.04 LTS", kernel: "5.15.0-119-generic", uptimeSeconds: 5433120, cpuPercent: 18, ramPercent: 37, diskPercent: 54, networkStatus: "ONLINE" },
     ];
 
     // ---- files -------------------------------------------------------

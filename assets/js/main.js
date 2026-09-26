@@ -314,11 +314,13 @@
         results.push({ group: "DOCUMENTS", label: `${d.docId} — ${d.title}`, sub: `v${d.currentVersion}`, href: `documents/${d.id}` });
       }
     });
-    (global.BULLETIN_DATA || []).forEach((b) => {
-      if (b.title.toLowerCase().includes(q) || (b.tag || "").toLowerCase().includes(q)) {
-        results.push({ group: "BULLETIN", label: b.title, sub: b.tag, href: `bulletin/${b.id}` });
-      }
-    });
+    if (global.PAGES && global.PAGES.bulletin) {
+      global.PAGES.bulletin.flatten().forEach(({ item, path }) => {
+        if (item.title.toLowerCase().includes(q) || (item.tag || "").toLowerCase().includes(q)) {
+          results.push({ group: "BULLETIN", label: item.title, sub: item.tag, href: global.PAGES.bulletin.pathFor(path) });
+        }
+      });
+    }
     DB.state.users.forEach((u) => {
       if (u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) {
         results.push({ group: "ACCOUNTS", label: u.username, sub: u.role, href: `accounts` });
