@@ -178,6 +178,26 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function attachListHtml(n) {
+    const atts = n.attachments || [];
+    if (!atts.length) return '<div class="field-hint">No files attached.</div>';
+    return atts.map((a, i) => `
+      <div class="row" style="justify-content:space-between; border:1px solid var(--border-strong); padding:6px 8px; margin-bottom:4px;">
+        <span>${escapeHtml(a.name)} <span style="color:var(--dimmer)">(${Math.round((a.size || 0) / 1024)} KB)</span></span>
+        <button class="btn btn-xs btn-danger" data-remove-attach="${i}">REMOVE</button>
+      </div>
+    `).join("");
+  }
+
   function renderTreeNodes(nodes) {
     return nodes.map((n) => {
       const sel = n.id === selectedId ? " selected" : "";
@@ -249,6 +269,11 @@
           <label>Body — plain text. Blank line = new paragraph. "**bold**", "- list item", "# Heading", "&gt; quote" also work.</label>
           <textarea id="f-body">${escapeHtml(n.body || "")}</textarea>
         </div>
+        <div class="field">
+          <label>Attachments (PDFs, images, docs — kept inside the exported file itself, so keep each one under a few MB)</label>
+          <input type="file" id="f-attach-input" multiple />
+          <div id="attach-list" style="margin-top:8px;">${attachListHtml(n)}</div>
+        </div>
       `;
     }
 
@@ -263,6 +288,34 @@
         if (key === "id" || key === "title" || key === "description" || key === "tag" || key === "date") renderTree();
       });
     });
+
+    const attachInput = document.getElementById("f-attach-input");
+    if (attachInput) {
+      attachInput.addEventListener("change", async () => {
+        const files = Array.from(attachInput.files || []);
+        for (const file of files) {
+          try {
+            const dataUrl = await fileToDataUrl(file);
+            n.attachments = n.attachments || [];
+            n.attachments.push({ name: file.name, type: file.type || "application/octet-stream", size: file.size, dataUrl });
+          } catch (err) {
+            alert("Could not read file: " + file.name);
+          }
+        }
+        save();
+        renderEdit();
+      });
+    }
+    const attachList = document.getElementById("attach-list");
+    if (attachList) {
+      attachList.addEventListener("click", (e) => {
+        const rm = e.target.closest("[data-remove-attach]");
+        if (!rm) return;
+        n.attachments.splice(Number(rm.dataset.removeAttach), 1);
+        save();
+        renderEdit();
+      });
+    }
   }
 
   function selectNode(id) { selectedId = id; renderTree(); renderEdit(); }
@@ -289,13 +342,37 @@
   }
 
   function deleteNode(id) {
-    if (!confirm("Delete this item/folder (and everything inside it)?")) return;
     const list = findParentList(tree, id, tree);
     if (!list) return;
     const idx = list.findIndex((n) => n.id === id);
     if (idx >= 0) list.splice(idx, 1);
     if (selectedId === id) selectedId = null;
     save(); renderTree(); renderEdit();
+  }
+
+  // window.confirm()/alert() are silently suppressed in some embedding
+  // contexts (they just return false with no dialog ever appearing), which
+  // made every destructive action look like a dead button. This "click
+  // again to confirm" pattern doesn't depend on any native dialog at all.
+  const armedButtons = new WeakMap();
+  function armOrRun(btn, run) {
+    if (armedButtons.has(btn)) {
+      clearTimeout(armedButtons.get(btn).timer);
+      armedButtons.delete(btn);
+      run();
+      return;
+    }
+    const original = btn.textContent;
+    btn.textContent = "CLICK AGAIN TO CONFIRM";
+    btn.style.background = "#e0483e";
+    btn.style.color = "#000";
+    const timer = setTimeout(() => {
+      armedButtons.delete(btn);
+      btn.textContent = original;
+      btn.style.background = "";
+      btn.style.color = "";
+    }, 6000);
+    armedButtons.set(btn, { timer, original });
   }
 
   document.getElementById("tree").addEventListener("click", (e) => {
@@ -305,15 +382,14 @@
     const del = e.target.closest("[data-delete]");
     if (addF) { addFolder(addF.dataset.addFolder); return; }
     if (addI) { addItem(addI.dataset.addItem); return; }
-    if (del) { deleteNode(del.dataset.delete); return; }
+    if (del) { armOrRun(del, () => deleteNode(del.dataset.delete)); return; }
     if (sel) { selectNode(sel.dataset.select); return; }
   });
 
   document.getElementById("btn-add-root-folder").addEventListener("click", () => addFolder(null));
 
-  document.getElementById("btn-clear").addEventListener("click", () => {
-    if (!confirm("Clear the whole draft in this tool? This cannot be undone (unless you already exported a file).")) return;
-    tree = []; selectedId = null; save(); renderTree(); renderEdit();
+  document.getElementById("btn-clear").addEventListener("click", (e) => {
+    armOrRun(e.currentTarget, () => { tree = []; selectedId = null; save(); renderTree(); renderEdit(); });
   });
 
   document.getElementById("btn-export").addEventListener("click", () => {

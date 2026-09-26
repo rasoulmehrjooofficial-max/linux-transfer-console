@@ -22,6 +22,26 @@
     return `<span class="badge badge-${variant}">${U.escapeHtml(tag)}</span>`;
   }
 
+  function formatKb(bytes) {
+    return Math.max(1, Math.round((bytes || 0) / 1024)) + " KB";
+  }
+
+  function attachmentsHtml(item) {
+    const atts = item.attachments || [];
+    if (!atts.length) return "";
+    return `
+      <div style="margin-top:14px; border-top:1px dashed #999; padding-top:10px;">
+        <div style="font-size:10px; letter-spacing:0.5px; color:#555; text-transform:uppercase; margin-bottom:6px;">ATTACHMENTS</div>
+        ${atts.map((a) => `
+          <div style="margin-bottom:4px;">
+            <a href="${a.dataUrl}" download="${U.escapeHtml(a.name)}" style="text-decoration:underline;">📎 ${U.escapeHtml(a.name)}</a>
+            <span style="color:#777;"> (${formatKb(a.size)})</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
   function isFolder(node) {
     return node && Array.isArray(node.children);
   }
@@ -169,6 +189,7 @@
               </div>
             </div>
             <div>${U.markdownToHtml(item.body)}</div>
+            ${attachmentsHtml(item)}
             <div class="doc-footer">
               <span>BULLETIN ID: ${U.escapeHtml(item.id)}</span>
               <span>READ-ONLY</span>
