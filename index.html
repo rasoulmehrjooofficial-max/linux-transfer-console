@@ -22,7 +22,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="assets/css/style.css" />
+<script>
+  // Always-fresh cache-busting: every local CSS/JS file below is requested
+  // with the current timestamp as a query string, so the browser can never
+  // serve a stale cached copy — no manual version bump, no cache-clearing,
+  // no reinstalling the app needed after an update, ever. These files are
+  // small; the tiny bandwidth cost is worth never debugging "why isn't my
+  // change showing up" again. document.write here is intentional and safe:
+  // this runs synchronously during initial HTML parsing, in order, exactly
+  // like a normal <script src> tag would.
+  window.__CACHE_BUST__ = Date.now();
+  document.write('<link rel="stylesheet" href="assets/css/style.css?v=' + window.__CACHE_BUST__ + '">');
+</script>
 </head>
 <body>
 
@@ -183,22 +194,35 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="assets/js/data.js"></script>
-<script src="assets/js/utils.js"></script>
-<script src="assets/js/components.js"></script>
-<script src="assets/js/export.js"></script>
-<script src="assets/js/bulletin-data.js"></script>
-<script src="assets/js/pages/dashboard.js"></script>
-<script src="assets/js/pages/transfers.js"></script>
-<script src="assets/js/pages/files.js"></script>
-<script src="assets/js/pages/documents.js"></script>
-<script src="assets/js/pages/bulletin.js"></script>
-<script src="assets/js/pages/accounts.js"></script>
-<script src="assets/js/pages/servers.js"></script>
-<script src="assets/js/pages/logs.js"></script>
-<script src="assets/js/pages/history.js"></script>
-<script src="assets/js/pages/settings.js"></script>
-<script src="assets/js/router.js"></script>
-<script src="assets/js/main.js"></script>
+<script>
+  // Same always-fresh cache-busting as the stylesheet above — see that
+  // comment for why. Order matters (these files depend on each other via
+  // globals), and document.write preserves it exactly like static tags would.
+  (function () {
+    var v = window.__CACHE_BUST__ || Date.now();
+    var files = [
+      "assets/js/data.js",
+      "assets/js/utils.js",
+      "assets/js/components.js",
+      "assets/js/export.js",
+      "assets/js/bulletin-data.js",
+      "assets/js/pages/dashboard.js",
+      "assets/js/pages/transfers.js",
+      "assets/js/pages/files.js",
+      "assets/js/pages/documents.js",
+      "assets/js/pages/bulletin.js",
+      "assets/js/pages/accounts.js",
+      "assets/js/pages/servers.js",
+      "assets/js/pages/logs.js",
+      "assets/js/pages/history.js",
+      "assets/js/pages/settings.js",
+      "assets/js/router.js",
+      "assets/js/main.js",
+    ];
+    files.forEach(function (f) {
+      document.write('<script src="' + f + "?v=" + v + '"><' + "/script>");
+    });
+  })();
+</script>
 </body>
 </html>
