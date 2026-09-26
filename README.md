@@ -26,8 +26,13 @@ python3 -m http.server 4173
 
 The app is a real installable PWA — the tab title, home-screen icon (a glasses
 mark on black), and standalone (no browser chrome) window are all wired up via
-`manifest.json` + the `apple-*` meta tags in `index.html`, and `sw.js` caches
-the app shell for offline use once installed.
+`manifest.json` + the `apple-*` meta tags in `index.html`.
+
+Note: there is intentionally **no offline caching** (no active service
+worker). An earlier version cached the app shell for offline use, but that
+caused devices to get stuck on stale files even after clearing site data —
+`sw.js` is now a one-time "kill switch" that cleans up any old cached version
+and then stops running. Every load fetches fresh files from the network.
 
 **The one requirement:** Safari on iPhone will only install a PWA from a real
 URL it can fetch — not from a file sitting on your Mac. So you need to host
@@ -52,8 +57,8 @@ can't install PWAs):
 3. Confirm the name ("rama") and tap **Add**.
 
 It now behaves like an installed app: its own icon, launches full-screen with
-no address bar, and (thanks to the service worker) keeps working even with
-no network once it's been opened at least once.
+no address bar. It requires a network connection (no offline caching — see
+above).
 
 ## What's real vs. mock
 

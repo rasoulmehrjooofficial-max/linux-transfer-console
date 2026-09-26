@@ -575,11 +575,10 @@
     UI.recordAudit("CONNECT_HOST", DB.state.session.currentServerName || "unknown", "SUCCESS");
   }
 
-  if ("serviceWorker" in navigator) {
-    global.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
-    });
-  }
+  // No service worker registration here on purpose — see sw.js for why.
+  // The kill-switch file stays in place so any device with an old worker
+  // still installed gets cleaned up via the browser's automatic update
+  // check, without this app ever registering a new one going forward.
 
   runBoot(showConnectScreen);
 })(window);
