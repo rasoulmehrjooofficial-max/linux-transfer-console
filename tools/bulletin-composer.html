@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Bulletin Composer (local only)</title>
+<style>
+  :root {
+    --bg: #0a0a0a; --panel: #101010; --panel-alt: #161616; --border: #2e2e2e; --border-strong: #3d3d3d;
+    --white: #f2f2f2; --text: #d8d8d8; --dim: #8a8a8a; --dimmer: #5c5c5c;
+    --yellow: #e0c341; --red: #e0483e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-family: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12.5px; height: 100vh; overflow: hidden;
+  }
+  .warn-banner {
+    background: #1a1400; color: var(--yellow); border-bottom: 1px solid var(--yellow);
+    padding: 8px 14px; font-size: 11.5px;
+  }
+  .app { display: flex; flex-direction: column; height: calc(100vh - 34px); }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;
+    border-bottom: 1px solid var(--border); background: var(--panel);
+  }
+  .brand { color: var(--white); font-weight: 700; }
+  .btn {
+    background: var(--panel-alt); color: var(--text); border: 1px solid var(--border-strong);
+    padding: 6px 12px; font-size: 11.5px; cursor: pointer; border-radius: 2px; font-family: inherit;
+  }
+  .btn:hover { background: #1c1c1c; }
+  .btn-primary { background: var(--white); color: #000; border-color: var(--white); font-weight: 700; }
+  .btn-danger { border-color: #5c2622; color: var(--red); }
+  .btn-xs { padding: 3px 8px; font-size: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .main { flex: 1; display: flex; min-height: 0; }
+  .tree-pane { width: 380px; border-right: 1px solid var(--border); overflow-y: auto; padding: 10px; }
+  .edit-pane { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .node {
+    border: 1px solid var(--border); background: var(--panel); margin-bottom: 6px; padding: 8px 10px; border-radius: 2px;
+  }
+  .node.folder { border-left: 3px solid var(--dim); }
+  .node.item { border-left: 3px solid var(--yellow); }
+  .node.selected { outline: 1px solid var(--yellow); }
+  .node-title { color: var(--white); cursor: pointer; font-weight: 600; }
+  .node-sub { color: var(--dimmer); font-size: 10px; margin-top: 2px; }
+  .node-actions { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .children { margin-left: 16px; margin-top: 6px; padding-left: 8px; border-left: 1px dashed var(--border); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 10.5px; color: var(--dimmer); text-transform: uppercase; margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: #000; border: 1px solid var(--border-strong); color: var(--white);
+    padding: 7px 9px; font-size: 12px; border-radius: 2px; font-family: inherit;
+  }
+  .field textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+  .field-hint { color: var(--dimmer); font-size: 10px; margin-top: 4px; }
+  .empty-hint { color: var(--dimmer); padding: 20px; text-align: center; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--panel); border: 1px solid var(--border-strong); width: 640px; max-width: 92vw; max-height: 85vh; display: flex; flex-direction: column; }
+  .modal-head { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; color: var(--white); }
+  .modal-body { padding: 14px; overflow-y: auto; }
+  .modal-foot { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .modal-body textarea { width: 100%; height: 320px; background: #000; color: var(--white); border: 1px solid var(--border-strong); font-family: inherit; font-size: 11px; padding: 8px; }
+</style>
+</head>
+<body>
+
+<div class="warn-banner">
+  ⚠ LOCAL TOOL — nothing on this page is ever sent anywhere. It only reads/writes your browser's local storage on this
+  machine and the files you explicitly Import/Export. Open it by double-clicking this file — you don't need a server.
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <span class="brand">BULLETIN COMPOSER <span style="color:var(--dimmer)">(local only)</span></span>
+    <div class="row">
+      <button class="btn" id="btn-import">IMPORT bulletin-data.js</button>
+      <button class="btn" id="btn-clear">CLEAR DRAFT</button>
+      <button class="btn btn-primary" id="btn-export">EXPORT bulletin-data.js</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="tree-pane">
+      <div class="row" style="margin-bottom:10px;">
+        <button class="btn btn-xs" id="btn-add-root-folder">+ FOLDER (top level)</button>
+      </div>
+      <div id="tree"></div>
+    </div>
+    <div class="edit-pane" id="edit-pane">
+      <div class="empty-hint">Select a folder or item on the left to edit it, or add a new one.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="import-modal">
+  <div class="modal-box">
+    <div class="modal-head"><span>IMPORT — paste the full contents of bulletin-data.js</span><button class="btn btn-xs" id="import-close">✕</button></div>
+    <div class="modal-body">
+      <textarea id="import-text" placeholder="Paste the whole file, including the window.BULLETIN_DATA = [ ... ]; line."></textarea>
+      <div class="field-hint">This replaces your current draft in this tool. It does not touch any real file until you click Export.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="import-cancel">CANCEL</button>
+      <button class="btn btn-primary" id="import-load">LOAD</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const STORAGE_KEY = "bulletin_composer_draft_v1";
+
+  function uid() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4); }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return [];
+  }
+
+  let tree = loadDraft();
+  let selectedId = null;
+
+  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); }
+
+  function isFolder(n) { return Array.isArray(n.children); }
+
+  function findNode(nodes, id, parentList) {
+    for (const n of nodes) {
+      if (n.id === id) return { node: n, list: parentList || nodes };
+      if (isFolder(n)) {
+        const found = findNode(n.children, id, n.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function findParentList(nodes, id, currentList) {
+    for (const n of nodes) {
+      if (n.id === id) return currentList;
+      if (isFolder(n)) {
+        const found = findParentList(n.children, id, n.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderTreeNodes(nodes) {
+    return nodes.map((n) => {
+      const sel = n.id === selectedId ? " selected" : "";
+      if (isFolder(n)) {
+        return `
+          <div class="node folder${sel}" data-id="${n.id}">
+            <div class="node-title" data-select="${n.id}">▤ ${escapeHtml(n.title || "(untitled folder)")}</div>
+            <div class="node-sub">${escapeHtml(n.description || "")}</div>
+            <div class="node-actions">
+              <button class="btn btn-xs" data-add-folder="${n.id}">+ FOLDER</button>
+              <button class="btn btn-xs" data-add-item="${n.id}">+ ITEM</button>
+              <button class="btn btn-xs btn-danger" data-delete="${n.id}">DELETE</button>
+            </div>
+            <div class="children">${renderTreeNodes(n.children)}</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="node item${sel}" data-id="${n.id}">
+          <div class="node-title" data-select="${n.id}">▥ ${escapeHtml(n.title || "(untitled item)")}</div>
+          <div class="node-sub">${escapeHtml(n.tag || "")} ${escapeHtml(n.date || "")}</div>
+          <div class="node-actions">
+            <button class="btn btn-xs btn-danger" data-delete="${n.id}">DELETE</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderTree() {
+    document.getElementById("tree").innerHTML = tree.length
+      ? renderTreeNodes(tree)
+      : '<div class="empty-hint">No folders yet. Click "+ FOLDER (top level)" above.</div>';
+  }
+
+  function renderEdit() {
+    const pane = document.getElementById("edit-pane");
+    if (!selectedId) { pane.innerHTML = '<div class="empty-hint">Select a folder or item on the left to edit it, or add a new one.</div>'; return; }
+    const found = findNode(tree, selectedId);
+    if (!found) { selectedId = null; renderEdit(); return; }
+    const n = found.node;
+
+    if (isFolder(n)) {
+      pane.innerHTML = `
+        <div class="field"><label>ID (used in the URL — letters, numbers, dashes only)</label><input id="f-id" value="${escapeHtml(n.id)}" /></div>
+        <div class="field"><label>Title</label><input id="f-title" value="${escapeHtml(n.title || "")}" /></div>
+        <div class="field"><label>Description (optional, one line)</label><input id="f-description" value="${escapeHtml(n.description || "")}" /></div>
+        <div class="field-hint">This is a folder. Add items or sub-folders to it from the tree on the left.</div>
+      `;
+    } else {
+      pane.innerHTML = `
+        <div class="field"><label>ID (used in the URL — letters, numbers, dashes only)</label><input id="f-id" value="${escapeHtml(n.id)}" /></div>
+        <div class="field"><label>Title</label><input id="f-title" value="${escapeHtml(n.title || "")}" /></div>
+        <div class="row">
+          <div class="field" style="flex:1"><label>Date (YYYY-MM-DD)</label><input id="f-date" value="${escapeHtml(n.date || "")}" /></div>
+          <div class="field" style="flex:1"><label>Time (HH:MM:SS)</label><input id="f-time" value="${escapeHtml(n.time || "")}" /></div>
+        </div>
+        <div class="row">
+          <div class="field" style="flex:1">
+            <label>Tag</label>
+            <select id="f-tag">
+              ${["NOTICE", "UPDATE", "REPORT", "MAINTENANCE", "ALERT"].map((t) => `<option ${n.tag === t ? "selected" : ""}>${t}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field" style="flex:1"><label>Author</label><input id="f-author" value="${escapeHtml(n.author || "")}" /></div>
+        </div>
+        <div class="field"><label>Description (optional, one line, shown in the list)</label><input id="f-description" value="${escapeHtml(n.description || "")}" /></div>
+        <div class="field">
+          <label>Body — plain text. Blank line = new paragraph. "**bold**", "- list item", "# Heading", "&gt; quote" also work.</label>
+          <textarea id="f-body">${escapeHtml(n.body || "")}</textarea>
+        </div>
+      `;
+    }
+
+    ["f-id", "f-title", "f-description", "f-date", "f-time", "f-tag", "f-author", "f-body"].forEach((fid) => {
+      const el = document.getElementById(fid);
+      if (!el) return;
+      const evt = el.tagName === "SELECT" ? "change" : "input";
+      el.addEventListener(evt, () => {
+        const key = fid.slice(2);
+        n[key] = el.value;
+        save();
+        if (key === "id" || key === "title" || key === "description" || key === "tag" || key === "date") renderTree();
+      });
+    });
+  }
+
+  function selectNode(id) { selectedId = id; renderTree(); renderEdit(); }
+
+  function addFolder(parentId) {
+    const node = { id: "folder-" + uid(), title: "New Folder", description: "", children: [] };
+    if (parentId) {
+      const found = findNode(tree, parentId);
+      found.node.children.push(node);
+    } else {
+      tree.push(node);
+    }
+    save(); selectNode(node.id);
+  }
+
+  function addItem(parentId) {
+    const node = {
+      id: "item-" + uid(), title: "New Item", date: new Date().toISOString().slice(0, 10),
+      time: "12:00:00", tag: "NOTICE", author: "", description: "", body: "",
+    };
+    const found = findNode(tree, parentId);
+    found.node.children.push(node);
+    save(); selectNode(node.id);
+  }
+
+  function deleteNode(id) {
+    if (!confirm("Delete this item/folder (and everything inside it)?")) return;
+    const list = findParentList(tree, id, tree);
+    if (!list) return;
+    const idx = list.findIndex((n) => n.id === id);
+    if (idx >= 0) list.splice(idx, 1);
+    if (selectedId === id) selectedId = null;
+    save(); renderTree(); renderEdit();
+  }
+
+  document.getElementById("tree").addEventListener("click", (e) => {
+    const sel = e.target.closest("[data-select]");
+    const addF = e.target.closest("[data-add-folder]");
+    const addI = e.target.closest("[data-add-item]");
+    const del = e.target.closest("[data-delete]");
+    if (addF) { addFolder(addF.dataset.addFolder); return; }
+    if (addI) { addItem(addI.dataset.addItem); return; }
+    if (del) { deleteNode(del.dataset.delete); return; }
+    if (sel) { selectNode(sel.dataset.select); return; }
+  });
+
+  document.getElementById("btn-add-root-folder").addEventListener("click", () => addFolder(null));
+
+  document.getElementById("btn-clear").addEventListener("click", () => {
+    if (!confirm("Clear the whole draft in this tool? This cannot be undone (unless you already exported a file).")) return;
+    tree = []; selectedId = null; save(); renderTree(); renderEdit();
+  });
+
+  document.getElementById("btn-export").addEventListener("click", () => {
+    const header = `/* ============================================================================
+   BULLETIN DATA — generated by tools/bulletin-composer.html
+   Edit by reopening that tool and clicking "Import", or hand-edit this file
+   directly (it's plain JS/JSON — see the shape of the objects below).
+   ========================================================================= */
+
+`;
+    const content = header + "window.BULLETIN_DATA = " + JSON.stringify(tree, null, 2) + ";\n";
+    const blob = new Blob([content], { type: "text/javascript" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "bulletin-data.js";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
+
+  document.getElementById("btn-import").addEventListener("click", () => {
+    document.getElementById("import-text").value = "";
+    document.getElementById("import-modal").classList.add("open");
+  });
+  document.getElementById("import-close").addEventListener("click", () => document.getElementById("import-modal").classList.remove("open"));
+  document.getElementById("import-cancel").addEventListener("click", () => document.getElementById("import-modal").classList.remove("open"));
+  document.getElementById("import-load").addEventListener("click", () => {
+    const src = document.getElementById("import-text").value;
+    try {
+      const sandbox = {};
+      new Function("window", src + "\n;window.BULLETIN_DATA = window.BULLETIN_DATA || BULLETIN_DATA;")(sandbox);
+      const data = sandbox.BULLETIN_DATA;
+      if (!Array.isArray(data)) throw new Error("Could not find BULLETIN_DATA array in the pasted text.");
+      tree = data; selectedId = null; save(); renderTree(); renderEdit();
+      document.getElementById("import-modal").classList.remove("open");
+    } catch (err) {
+      alert("Could not parse that file: " + err.message);
+    }
+  });
+
+  renderTree();
+  renderEdit();
+})();
+</script>
+</body>
+</html>
