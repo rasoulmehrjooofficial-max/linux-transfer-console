@@ -5,13 +5,14 @@
    to the network normally.
    ============================================================================ */
 
-const CACHE_NAME = "rama-console-v4";
+const CACHE_NAME = "rama-console-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
   "./assets/css/style.css",
   "./assets/js/data.js",
+  "./assets/js/bulletin-data.js",
   "./assets/js/utils.js",
   "./assets/js/components.js",
   "./assets/js/export.js",
@@ -21,6 +22,7 @@ const APP_SHELL = [
   "./assets/js/pages/transfers.js",
   "./assets/js/pages/files.js",
   "./assets/js/pages/documents.js",
+  "./assets/js/pages/bulletin.js",
   "./assets/js/pages/accounts.js",
   "./assets/js/pages/servers.js",
   "./assets/js/pages/logs.js",
