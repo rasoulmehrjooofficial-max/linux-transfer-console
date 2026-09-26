@@ -68,9 +68,13 @@
 </head>
 <body>
 
-<div class="warn-banner">
+<div class="warn-banner" id="warn-banner">
   ⚠ LOCAL TOOL — nothing on this page is ever sent anywhere. It only reads/writes your browser's local storage on this
   machine and the files you explicitly Import/Export. Open it by double-clicking this file — you don't need a server.
+</div>
+<div class="warn-banner" id="warn-no-persist" style="display:none; background:#1a0000; color:#e0483e; border-color:#e0483e;">
+  ⚠ Your browser won't let this page save a draft between reloads (common when opening a file directly). That's fine —
+  just don't close this tab or reload until you click EXPORT. Everything still works, it just lives only in this tab.
 </div>
 
 <div class="app">
@@ -128,7 +132,22 @@
   let tree = loadDraft();
   let selectedId = null;
 
-  function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tree)); }
+  let persistWarned = false;
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tree));
+    } catch (e) {
+      // Some browsers (notably Safari) block localStorage entirely on file://
+      // pages. That must never break the buttons — the tool still works for
+      // the rest of this session, it just won't survive a reload/close.
+      if (!persistWarned) {
+        persistWarned = true;
+        console.warn("Local storage unavailable (expected on file:// in some browsers) — draft will not persist across reloads.", e);
+        const banner = document.getElementById("warn-no-persist");
+        if (banner) banner.style.display = "block";
+      }
+    }
+  }
 
   function isFolder(n) { return Array.isArray(n.children); }
 
