@@ -168,7 +168,7 @@
                 TAG: ${U.escapeHtml(item.tag || "—")}
               </div>
             </div>
-            <div>${item.body || ""}</div>
+            <div>${U.markdownToHtml(item.body)}</div>
             <div class="doc-footer">
               <span>BULLETIN ID: ${U.escapeHtml(item.id)}</span>
               <span>READ-ONLY</span>
@@ -197,7 +197,7 @@
           showGeneratedDate: true,
           confidentialityText: item.tag || "",
         },
-        contentHtml: item.body || "",
+        contentHtml: U.markdownToHtml(item.body),
       };
     }
 

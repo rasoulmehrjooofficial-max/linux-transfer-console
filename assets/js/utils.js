@@ -122,8 +122,81 @@
     });
   }
 
+  // Minimal Markdown → HTML. Supports the handful of things a bulletin post
+  // actually needs: # / ## / ### headings, blank-line paragraphs, **bold**,
+  // *italic*, [text](url) links, "- " / "* " bullet lists, "1. " numbered
+  // lists, "> " blockquotes, and simple "|"-piped tables (header row, a
+  // "---" separator row, then data rows — no alignment syntax). Anything
+  // else is left as a plain paragraph. Not a full CommonMark implementation
+  // on purpose — this exists so bulletin-data.js stays easy to hand-edit.
+  function markdownToHtml(md) {
+    if (!md) return "";
+    const lines = String(md).replace(/\r\n/g, "\n").split("\n");
+    let html = "";
+    let i = 0;
+
+    function inline(s) {
+      return escapeHtml(s)
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(^|[^*])\*(?!\*)(.+?)\*(?!\*)/g, "$1<em>$2</em>")
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    }
+
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) { i++; continue; }
+
+      const h = line.match(/^(#{1,3})\s+(.*)$/);
+      if (h) { const lvl = h[1].length + 1; html += `<h${lvl}>${inline(h[2])}</h${lvl}>`; i++; continue; }
+
+      if (line.includes("|") && lines[i + 1] && /^[\s|:-]+$/.test(lines[i + 1]) && lines[i + 1].includes("-")) {
+        const headerCells = line.split("|").map((c) => c.trim()).filter(Boolean);
+        i += 2;
+        const rows = [];
+        while (i < lines.length && lines[i].includes("|")) {
+          rows.push(lines[i].split("|").map((c) => c.trim()).filter(Boolean));
+          i++;
+        }
+        html += "<table><tr>" + headerCells.map((c) => `<th>${inline(c)}</th>`).join("") + "</tr>";
+        rows.forEach((r) => { html += "<tr>" + r.map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>"; });
+        html += "</table>";
+        continue;
+      }
+
+      if (/^[-*]\s+/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*]\s+/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s+/, "")); i++; }
+        html += "<ul>" + items.map((it) => `<li>${inline(it)}</li>`).join("") + "</ul>";
+        continue;
+      }
+
+      if (/^\d+\.\s+/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s+/, "")); i++; }
+        html += "<ol>" + items.map((it) => `<li>${inline(it)}</li>`).join("") + "</ol>";
+        continue;
+      }
+
+      if (/^>\s?/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^>\s?/.test(lines[i])) { items.push(lines[i].replace(/^>\s?/, "")); i++; }
+        html += `<blockquote>${inline(items.join(" "))}</blockquote>`;
+        continue;
+      }
+
+      const para = [line];
+      i++;
+      while (i < lines.length && lines[i].trim() && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+|>\s?)/.test(lines[i])) {
+        para.push(lines[i]); i++;
+      }
+      html += `<p>${inline(para.join(" "))}</p>`;
+    }
+    return html;
+  }
+
   global.U = {
     escapeHtml, formatBytes, formatSpeed, formatDateTime, formatDate, formatTime,
     formatDuration, formatUptime, timeAgo, qs, qsa, el, debounce, downloadBlob, fileToDataUrl,
+    markdownToHtml,
   };
 })(window);
