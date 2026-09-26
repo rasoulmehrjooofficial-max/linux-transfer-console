@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>rama</title>
 
+<script>
+  // iOS's "Add to Home Screen" apps sometimes resume a frozen snapshot of
+  // the last session instead of actually reloading the page when reopened
+  // (the standard "back-forward cache" behavior) — when that happens, the
+  // cache-busting script further down never re-runs, so the app can look
+  // stuck on old content no matter how often the server is updated. This
+  // forces a genuine reload whenever the page is restored that way.
+  window.addEventListener("pageshow", function (event) {
+    if (event.persisted) location.reload();
+  });
+</script>
+
 <!-- PWA: installable on iOS via Safari "Add to Home Screen" -->
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#0a0a0a" />
