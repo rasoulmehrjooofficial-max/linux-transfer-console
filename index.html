@@ -15,6 +15,18 @@
   window.addEventListener("pageshow", function (event) {
     if (event.persisted) location.reload();
   });
+
+  // Separate from the above: on iOS, simply backgrounding the installed app
+  // (home button / app switcher, not force-quitting it) and reopening the
+  // same icon often just wakes the SAME suspended page back up — no
+  // navigation, no pageshow event, nothing reloads, so it keeps whatever
+  // was already in memory from whenever it was first opened, potentially
+  // hours or days of staleness. Reloading whenever the app becomes visible
+  // again (but not on the very first load, which never fires this event)
+  // closes that gap too.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") location.reload();
+  });
 </script>
 
 <!-- PWA: installable on iOS via Safari "Add to Home Screen" -->
