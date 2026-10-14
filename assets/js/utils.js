@@ -101,8 +101,43 @@
     };
   }
 
-  function downloadBlob(filename, content, mime) {
-    const blob = new Blob([content], { type: mime || "text/plain" });
+  // ---------------------------------------------------------------------
+  // File delivery. A plain <a download> / data: URL / pdf.save() works on
+  // desktop, but inside an installed iOS home-screen app it navigates the
+  // standalone window to the file and leaves a blank white page with no way
+  // back. On iOS the reliable route is the native share sheet ("Save to
+  // Files"), which needs navigator.share called inside a fresh tap.
+  // ---------------------------------------------------------------------
+  function isIosLike() {
+    const ua = navigator.userAgent || "";
+    return /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const m = /^data:([^;,]*)((?:;[^;,]*)*),(.*)$/s.exec(dataUrl || "");
+    if (!m) return new Blob([]);
+    const isB64 = /;base64/.test(m[2]);
+    const raw = isB64 ? atob(m[3]) : decodeURIComponent(m[3]);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return new Blob([bytes], { type: m[1] || "application/octet-stream" });
+  }
+
+  function toFile(blob, filename) {
+    if (typeof File === "function") {
+      try { return new File([blob], filename, { type: blob.type || "application/octet-stream" }); } catch (e) { /* fall through */ }
+    }
+    return blob;
+  }
+
+  function canShareFile(file) {
+    try {
+      return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+    } catch (e) { return false; }
+  }
+
+  function anchorDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -110,7 +145,55 @@
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  // Must be called synchronously from a click handler. Returns a promise.
+  function saveFile(blob, filename) {
+    const file = toFile(blob, filename);
+    if (isIosLike() && canShareFile(file)) {
+      return navigator.share({ files: [file], title: filename }).catch((e) => {
+        if (e && e.name === "AbortError") return; // user closed the sheet
+        anchorDownload(blob, filename);
+      });
+    }
+    anchorDownload(blob, filename);
+    return Promise.resolve();
+  }
+
+  function openBlob(blob) {
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if (!w) location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  // For files generated asynchronously (e.g. a PDF): the original tap is
+  // already used up, so on iOS show a confirm panel whose buttons are fresh
+  // taps. Elsewhere just download.
+  function deliverFile(blob, filename) {
+    if (!isIosLike() || !global.UI || !UI.openModal) {
+      anchorDownload(blob, filename);
+      return;
+    }
+    UI.openModal({
+      title: "FILE READY",
+      body: `<div class="mono" style="word-break:break-all;">${escapeHtml(filename)}</div>
+             <div class="field-hint" style="margin-top:6px;">${formatBytes(blob.size)} — tap SAVE and choose "Save to Files".</div>`,
+      foot: `<button class="btn btn-primary" id="df-save">SAVE / SHARE</button>
+             <button class="btn" id="df-open">OPEN</button>
+             <button class="btn btn-ghost" id="df-close">CLOSE</button>`,
+      onMount: (box) => {
+        qs("#df-save", box).addEventListener("click", () => saveFile(blob, filename));
+        qs("#df-open", box).addEventListener("click", () => openBlob(blob));
+        qs("#df-close", box).addEventListener("click", () => UI.closeModal());
+      },
+    });
+  }
+
+  function downloadBlob(filename, content, mime) {
+    const blob = new Blob([content], { type: mime || "text/plain" });
+    deliverFile(blob, filename);
   }
 
   function fileToDataUrl(file) {
@@ -197,6 +280,6 @@
   global.U = {
     escapeHtml, formatBytes, formatSpeed, formatDateTime, formatDate, formatTime,
     formatDuration, formatUptime, timeAgo, qs, qsa, el, debounce, downloadBlob, fileToDataUrl,
-    markdownToHtml,
+    markdownToHtml, isIosLike, dataUrlToBlob, canShareFile, anchorDownload, openBlob, saveFile, deliverFile,
   };
 })(window);

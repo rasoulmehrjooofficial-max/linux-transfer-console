@@ -64,9 +64,14 @@
     }
     const { jsPDF } = global.jspdf;
     const node = buildPrintableNode(doc);
+    // Keep it at the page origin, hidden behind the app. Parking it far
+    // off-screen (left:-10000px) made jsPDF place every glyph at a huge
+    // negative x — a valid PDF whose single page is completely blank.
     node.style.position = "fixed";
-    node.style.left = "-10000px";
+    node.style.left = "0";
     node.style.top = "0";
+    node.style.zIndex = "-1";
+    node.style.pointerEvents = "none";
     document.body.appendChild(node);
 
     const pdf = new jsPDF({ unit: "pt", format: "a4" });
@@ -81,7 +86,7 @@
           callback: () => resolve(),
         });
       });
-      pdf.save(`${doc.docId}.pdf`);
+      U.deliverFile(pdf.output("blob"), `${doc.docId}.pdf`);
       UI.recordAudit("EXPORT_PDF", doc.docId, "SUCCESS");
       UI.pushNotification("INFO", `Exported ${doc.docId} to PDF.`);
     } catch (e) {

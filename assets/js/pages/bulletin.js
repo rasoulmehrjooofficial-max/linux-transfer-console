@@ -30,16 +30,45 @@
     const atts = item.attachments || [];
     if (!atts.length) return "";
     return `
-      <div style="margin-top:14px; border-top:1px dashed #999; padding-top:10px;">
-        <div style="font-size:10px; letter-spacing:0.5px; color:#555; text-transform:uppercase; margin-bottom:6px;">ATTACHMENTS</div>
-        ${atts.map((a) => `
-          <div style="margin-bottom:4px;">
-            <a href="${a.dataUrl}" download="${U.escapeHtml(a.name)}" style="text-decoration:underline;">📎 ${U.escapeHtml(a.name)}</a>
-            <span style="color:#777;"> (${formatKb(a.size)})</span>
-          </div>
-        `).join("")}
+      <div class="panel" style="margin-bottom:12px;">
+        <div class="panel-head">
+          <span>ATTACHMENTS</span>
+          <span class="badge badge-yellow">${atts.length} FILE${atts.length === 1 ? "" : "S"}</span>
+        </div>
+        <div class="panel-body">
+          ${atts.map((a, i) => `
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+              <span style="flex:1 1 180px; min-width:0; word-break:break-all;">📎 ${U.escapeHtml(a.name)}
+                <span style="color:var(--text-dimmer);">(${formatKb(a.size)})</span></span>
+              <button class="btn btn-primary btn-xs" data-att-dl="${i}">DOWNLOAD</button>
+              <button class="btn btn-xs" data-att-open="${i}">OPEN</button>
+            </div>
+          `).join("")}
+        </div>
       </div>
     `;
+  }
+
+  // Files are built up-front so the click handlers can call navigator.share
+  // synchronously — iOS rejects it once the tap's user-activation is spent.
+  function wireAttachments(container, item) {
+    const atts = item.attachments || [];
+    if (!atts.length) return;
+    const files = atts.map((a) => {
+      const blob = U.dataUrlToBlob(a.dataUrl);
+      const type = blob.type && blob.type !== "application/octet-stream" ? blob.type : (a.type || blob.type);
+      const typed = type === blob.type ? blob : new Blob([blob], { type });
+      return typeof File === "function" ? new File([typed], a.name, { type }) : typed;
+    });
+    container.querySelectorAll("[data-att-dl]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const i = +btn.dataset.attDl;
+        U.saveFile(files[i], atts[i].name);
+      });
+    });
+    container.querySelectorAll("[data-att-open]").forEach((btn) => {
+      btn.addEventListener("click", () => U.openBlob(files[+btn.dataset.attOpen]));
+    });
   }
 
   function isFolder(node) {
@@ -171,6 +200,8 @@
 
       ${breadcrumbHtml(trail, segments)}
 
+      <div style="max-width:900px;">${attachmentsHtml(item)}</div>
+
       <div class="panel" style="max-width:900px;">
         <div class="panel-body">
           <table class="kv-table" style="margin-bottom:14px;">
@@ -189,7 +220,6 @@
               </div>
             </div>
             <div>${U.markdownToHtml(item.body)}</div>
-            ${attachmentsHtml(item)}
             <div class="doc-footer">
               <span>BULLETIN ID: ${U.escapeHtml(item.id)}</span>
               <span>READ-ONLY</span>
@@ -199,6 +229,8 @@
         </div>
       </div>
     `;
+
+    wireAttachments(container, item);
 
     function asPseudoDoc() {
       return {
